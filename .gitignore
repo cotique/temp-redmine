@@ -50,3 +50,8 @@ yarn-error.log
 # discipline-pack: records local paths and command text, never commit it.
 .claude/discipline-events.jsonl
 .claude/settings.local.json
+
+# Playwright UI verification harness (playwright/) - generated artifacts only.
+/playwright/node_modules
+/playwright/test-results
+/playwright/playwright-report

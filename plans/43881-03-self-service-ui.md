@@ -1,0 +1,50 @@
+# #43881 — Step 3: Self-service UI in My Account
+
+Part of [Personal Access Tokens](43881-personal-access-tokens.md). Requires
+[Step 1](43881-01-data-model-and-setting.md) and
+[Step 2](43881-02-authentication-and-authorization.md) to be done first. 
+
+---
+
+```
+Repo: this Redmine checkout. Prerequisite: Steps 1 and 2 are done — `PersonalAccessToken` model exists and `find_current_user` already authenticates via it. Verify both before starting; if either is missing, stop and report.
+
+Goal: let a user create, list, and revoke their own Personal Access Tokens from "My account", following the EXACT same structure MyController already uses for API-key management.
+
+1. Read `app/controllers/my_controller.rb` in full first, specifically `show_api_key`, `reset_api_key`, and the `require_sudo_mode :reset_atom_key, :reset_api_key, :show_api_key, :destroy` line, and the `accept_api_auth :account` line.
+
+2. Add to `MyController`:
+   - `require_sudo_mode` for the new actions (add them to the existing `require_sudo_mode` line, don't create a second one) — every PAT action (list, new, create, destroy) requires sudo mode, same rationale as API key reset.
+   - `def personal_access_tokens` — lists `User.current.personal_access_tokens`, renders a view. This list MUST be paginated, the same way Step 4's admin list is: mirror `GroupsController#index` exactly — `per_page_option` for the page size and `Paginator.new(total_count, per_page_option, params['page'])` for the pager, then `.limit(...).offset(...)` on the scope. Do not skip this: this design's accepted trade-off (see the index doc) is that expired tokens are never cleaned up, so even one user's own token list is unbounded in practice over the life of the account, not the small/bounded case `RolesController`'s unpaginated list is (a fixed, small set of roles). Order by `created_on` descending so the newest tokens surface first.
+   - `def new_personal_access_token` — renders a form (name, expires_on, scopes as a checkbox list). The scope list is `Redmine::AccessControl.permissions.reject(&:public?)` — the exact same list and filter `RolesController#permissions` uses (`app/controllers/roles_controller.rb:121`), rendered grouped by `project_module` the same way `app/views/roles/_form.html.erb` and `app/views/roles/permissions.html.erb` already do it. Reuse that existing grouping/rendering approach (extract a shared partial if that's cleanly possible without touching RolesController's own views, otherwise duplicate the minimal rendering logic — do not invent a different scope vocabulary or a free-text field for this).
+   - `def create_personal_access_token` — builds and saves a `PersonalAccessToken` for `User.current`; clamp `expires_on` to `Setting.personal_access_token_max_lifetime.to_i.days.from_now` if that setting is non-zero and the submitted date exceeds it (re-read the setting added in Step 1). On success, render a page showing the raw token `.value` ONCE with a clear "this will not be shown again" notice (mirror how `show_api_key`'s view currently displays the key). On failure, re-render the form with errors, matching existing MyController error-handling conventions (check how other create-style actions in this controller or a similar simple controller handle validation failures — e.g. `render :action => 'new_personal_access_token'` with `flash.now` or inline errors, following whatever this codebase's actual convention is once you look).
+   - `def destroy_personal_access_token` — finds the token scoped to `User.current.personal_access_tokens` (never allow destroying another user's token via this action — must be scoped to current user), destroys it, redirects back to the list with a notice.
+
+3. Add routes in `config/routes.rb` near the existing `match 'my/account'...` block, using the SAME `match '...', :controller => 'my', :action => '...', :via => [...]` style already used for every other `my/*` route in that file — do not introduce `resources` here, this controller doesn't use it for `my/*` routes.
+
+4. Add views under `app/views/my/`:
+   - `personal_access_tokens.html.erb` — table of the user's tokens: name, scopes (or "full access" if blank), expires_on, last_used_on, a revoke link/button per row, and a "new token" link. Follow the visual/markup conventions of an existing similar list view in `app/views/my/` or `app/views/users/` (check one before writing this).
+   - `new_personal_access_token.html.erb` — the create form.
+   - A partial or inline block for the one-time "here is your token" reveal after creation.
+
+5. Add a link to this new page from the existing My Account navigation (check `app/views/my/account.html.erb` or the account sidebar/menu partial for how "Show API key" or similar is currently linked, and add a matching link).
+
+6. Add English locale strings to `config/locales/en.yml` for every new label/button/flash message you introduce (list them explicitly in your final report so a reviewer can spot-check completeness) — follow the file's existing key-naming conventions (e.g. `label_personal_access_token_new`, `button_revoke`, `notice_personal_access_token_created`, etc. — check for existing `button_revoke` or similar before adding a duplicate).
+
+Verify — UI verification MUST be done with Playwright, not by reading code and not by manually clicking through a browser yourself. This repo already has a standalone Playwright harness at `playwright/` (see `playwright/README.md`) with `playwright.config.ts` pointed at `http://localhost:3000` and a `loginAsAdmin(page)` helper in `playwright/tests/utils.ts` that handles authentication deterministically (its `global-setup.ts` pins the dev DB's admin password via `docker compose exec ... rails runner` before any spec runs — do not change that mechanism):
+- Start the dev environment: `docker compose up -d` from the repo root (there is already a `docker-compose.yml` / `docker/dev/` set up for exactly this).
+- Add a new spec file `playwright/tests/personal-access-tokens.spec.ts` that:
+  - Logs in via `loginAsAdmin(page)`.
+  - Navigates to the new Personal Access Tokens page in My Account and creates a token; asserts the raw value is shown exactly once, and asserts a page reload / re-navigation to the list no longer shows the raw value anywhere.
+  - Asserts the token appears in the list with correct expiration/scope display.
+  - Creates enough tokens (more than one page's worth — use a low `per_page` via `?per_page=<n>` with a small `n` from `Setting.per_page_options_array`, e.g. 25 if that's the smallest configured, rather than creating 26+ real tokens just to prove pagination) to force a second page, and asserts the pager control appears and actually navigates to page 2 with different rows than page 1. Do not skip this — pagination was added specifically because expired tokens are never cleaned up, so it needs to actually work, not just be present in the code.
+  - Asserts sudo mode is actually enforced on these actions the same way it already is on the existing `show_api_key`/`reset_api_key` actions (read how MyController's existing sudo-mode behavior surfaces in the UI — e.g. a re-authentication prompt — and assert the new actions trigger the same thing).
+  - Revokes a token via the UI and asserts it disappears from the list.
+- From `playwright/`: `npm install && npx playwright install chromium` (if not already done), then `npx playwright test`. All specs must pass — paste the actual terminal output in your final report, not a description of what you expect it to show.
+- Separately (not via Playwright — this is an API-level check, not a UI one), spot check via Step 2's API-auth path that the revoked token's raw value no longer authenticates.
+- Run `bundle exec rubocop app/controllers/my_controller.rb`.
+
+Constraints:
+- Do not touch application_controller.rb further, do not add an admin-facing controller — that's Step 4.
+- Do not commit. Leave changes in the working tree for review.
+```

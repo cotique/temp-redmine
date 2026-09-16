@@ -1,0 +1,15 @@
+{
+  "name": "redmine-dev-playwright-verification",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Ad hoc UI verification against the local Redmine dev server (docker-compose). Not part of the Rails app or its test suite.",
+  "scripts": {
+    "test": "playwright test",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.48.0",
+    "@types/node": "^22.20.3",
+    "typescript": "^5.9.3"
+  }
+}
