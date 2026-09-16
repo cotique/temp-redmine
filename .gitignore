@@ -46,3 +46,7 @@
 
 /node_modules
 yarn-error.log
+
+# discipline-pack: records local paths and command text, never commit it.
+.claude/discipline-events.jsonl
+.claude/settings.local.json

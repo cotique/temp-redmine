@@ -1,0 +1,88 @@
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "pwsh -NoProfile -File \"%CLAUDE_PROJECT_DIR%\\.claude\\hooks\\block-protected-branch.ps1\""
+          }
+        ]
+      },
+      {
+        "matcher": "Bash|Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "pwsh -NoProfile -File \"%CLAUDE_PROJECT_DIR%\\.claude\\hooks\\secret-guard.ps1\"",
+            "timeout": 15
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "pwsh -NoProfile -File \"%CLAUDE_PROJECT_DIR%\\.claude\\hooks\\format-postcheck.ps1\""
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "pwsh -NoProfile -File \"%CLAUDE_PROJECT_DIR%\\.claude\\hooks\\kb-first-reminder.ps1\""
+          }
+        ]
+      },
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "pwsh -NoProfile -File \"%CLAUDE_PROJECT_DIR%\\.claude\\hooks\\secret-guard.ps1\"",
+            "timeout": 10
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "pwsh -NoProfile -File \"%CLAUDE_PROJECT_DIR%\\.claude\\hooks\\dod-gate.ps1\"",
+            "timeout": 120
+          }
+        ]
+      }
+    ],
+    "SessionStart": [
+      {
+        "matcher": "startup|resume|clear|compact",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "pwsh -NoProfile -File \"%CLAUDE_PROJECT_DIR%\\.claude\\hooks\\session-envelope.ps1\""
+          }
+        ]
+      }
+    ],
+    "PreCompact": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "pwsh -NoProfile -File \"%CLAUDE_PROJECT_DIR%\\.claude\\hooks\\session-envelope.ps1\"",
+            "timeout": 20
+          }
+        ]
+      }
+    ]
+  }
+}

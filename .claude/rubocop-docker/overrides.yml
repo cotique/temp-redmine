@@ -1,0 +1,12 @@
+# Used only for the dockerized rubocop invocation (discipline-pack dod-gate /
+# format-postcheck hooks on this machine). The repo's canonical line ending is
+# LF (see git blobs / no .gitattributes override), but this host's global
+# core.autocrlf=true checks working-tree files out as CRLF. rubocop's
+# Layout/EndOfLine "native" style resolves to LF inside the Linux container,
+# which would then flag every file's CRLF as a violation — a checkout
+# artifact, not a real lint finding. Override it to match what's actually on
+# disk here instead of disabling the cop or touching the shared .rubocop.yml.
+inherit_from: ../../.rubocop.yml
+
+Layout/EndOfLine:
+  EnforcedStyle: crlf
