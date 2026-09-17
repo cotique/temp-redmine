@@ -370,6 +370,7 @@ Rails.application.routes.draw do
       post 'permissions', :to => 'roles#update_permissions'
     end
   end
+  resources :personal_access_tokens, :only => [:index, :destroy]
   resources :enumerations, :except => :show
   match 'enumerations/:type', :to => 'enumerations#index', :via => :get
 
