@@ -55,3 +55,7 @@ yarn-error.log
 /playwright/node_modules
 /playwright/test-results
 /playwright/playwright-report
+
+# Local dev-server Docker setup - not tracked.
+/docker-compose.yml
+/docker
