@@ -70,8 +70,13 @@ context. Run them in order — each one's prerequisite check assumes the previou
    `test/integration/api_test/authentication_test.rb`, which already tests every other auth
    transport in exactly this style. Once real Minitest coverage exists there, the Playwright API
    spec becomes pure duplication and gets deleted, not kept alongside it.
-5. [Step 3 — Self-service UI in My Account](43881-03-self-service-ui.md)
-6. [Step 4 — Admin cross-user management panel](43881-04-admin-panel.md)
+5. [Step 2.3 — Stop logging PAT/API key values in plaintext](43881-02.3-filter-credentials-from-logs.md) —
+   a real credential leak observed directly in this session's own dev server log (not
+   hypothesized): the raw PAT value appears in plaintext in the `Parameters:` log line whenever
+   sent as `?key=`, because `config.filter_parameters` only filters `:password`. Narrow fix, not a
+   logging-infrastructure change.
+6. [Step 3 — Self-service UI in My Account](43881-03-self-service-ui.md)
+7. [Step 4 — Admin cross-user management panel](43881-04-admin-panel.md)
 
 ## Constraints that apply to every step
 
