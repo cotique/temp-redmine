@@ -64,8 +64,14 @@ context. Run them in order — each one's prerequisite check assumes the previou
    contradicted itself (expected PAT-via-HTTP-Basic to work, but also hard-constrained "don't touch
    the HTTP Basic branch"). The worker correctly followed the explicit constraint and flagged the
    resulting gap instead of guessing. This step closes it.
-4. [Step 3 — Self-service UI in My Account](43881-03-self-service-ui.md)
-5. [Step 4 — Admin cross-user management panel](43881-04-admin-panel.md)
+4. [Step 2.2 — Minitest coverage for PAT auth, retire the Playwright API spec](43881-02.2-minitest-auth-coverage.md) —
+   `playwright/tests/personal-access-tokens-api.spec.ts` was a stand-in because no UI existed yet
+   to verify with Playwright; the real, idiomatic home for this coverage is
+   `test/integration/api_test/authentication_test.rb`, which already tests every other auth
+   transport in exactly this style. Once real Minitest coverage exists there, the Playwright API
+   spec becomes pure duplication and gets deleted, not kept alongside it.
+5. [Step 3 — Self-service UI in My Account](43881-03-self-service-ui.md)
+6. [Step 4 — Admin cross-user management panel](43881-04-admin-panel.md)
 
 ## Constraints that apply to every step
 
