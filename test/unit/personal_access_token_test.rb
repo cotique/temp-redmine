@@ -48,8 +48,10 @@ class PersonalAccessTokenTest < ActiveSupport::TestCase
 
   def test_scopes_cannot_be_blank
     pat = PersonalAccessToken.new(:user => @user, :name => 'test', :expires_on => 30.days.from_now)
-    assert !pat.save
-    assert_includes pat.errors[:scopes], 'cannot be blank'
+    with_locale('en') do
+      assert !pat.save
+      assert_includes pat.errors[:scopes], 'cannot be blank'
+    end
   end
 
   def test_name_should_be_unique_per_user
@@ -57,8 +59,10 @@ class PersonalAccessTokenTest < ActiveSupport::TestCase
                                  :scopes => 'view_issues')
     pat = PersonalAccessToken.new(:user => @user, :name => 'dup', :expires_on => 30.days.from_now,
                                    :scopes => 'view_issues')
-    assert !pat.save
-    assert_includes pat.errors[:name], 'has already been taken'
+    with_locale('en') do
+      assert !pat.save
+      assert_includes pat.errors[:name], 'has already been taken'
+    end
   end
 
   def test_find_by_value_should_return_the_matching_token
