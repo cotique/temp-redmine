@@ -20,12 +20,18 @@ function uniqueName(prefix: string): string {
   return `${prefix}-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
 }
 
-/** Creates a token for whichever user `page` is currently logged in as, via the My Account UI. */
+/**
+ * Creates a token for whichever user `page` is currently logged in as, via
+ * the My Account UI. Assumes the caller has already admin-allowed
+ * 'view_issues' as a Personal Access Token scope (fail-closed default: at
+ * least one scope must be checked, or the token can't be created at all).
+ */
 async function createTokenViaMyAccount(page: Page, name: string): Promise<void> {
   await page.goto('/my/personal_access_tokens/new');
   await page.fill('#personal_access_token_name', name);
   const expiresOn = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
   await page.fill('#personal_access_token_expires_on', expiresOn);
+  await page.check('#personal_access_token_scopes_view_issues');
   await page.click('input[type=submit]');
   await expect(page).toHaveURL(/\/my\/personal_access_tokens$/);
 }
@@ -35,6 +41,10 @@ test.describe('Personal access tokens (Administration)', () => {
     // Several docker-exec round-trips plus a fair number of UI steps below;
     // the default 30s test timeout is too tight for that.
     test.setTimeout(120_000);
+
+    // Fail-closed default: at least one permission must be admin-allowed
+    // before any new token (scoped or not) can be created at all.
+    railsRunner("Setting.personal_access_token_allowed_scopes = ['view_issues']");
 
     // --- Tokens for the admin account, created via My Account (Step 3 UI) ---
     await loginAsAdmin(page);
@@ -81,8 +91,8 @@ test.describe('Personal access tokens (Administration)', () => {
       admin = User.find_by_login('${ADMIN_LOGIN}')
       nonadmin = User.find_by_login('${NON_ADMIN_LOGIN}')
       3.times do |i|
-        admin.personal_access_tokens.create!(name: "${pagePrefix}-admin-#{i}", expires_on: 30.days.from_now.to_date)
-        nonadmin.personal_access_tokens.create!(name: "${pagePrefix}-nonadmin-#{i}", expires_on: 30.days.from_now.to_date)
+        admin.personal_access_tokens.create!(name: "${pagePrefix}-admin-#{i}", expires_on: 30.days.from_now.to_date, scopes: 'view_issues')
+        nonadmin.personal_access_tokens.create!(name: "${pagePrefix}-nonadmin-#{i}", expires_on: 30.days.from_now.to_date, scopes: 'view_issues')
       end
     `);
 

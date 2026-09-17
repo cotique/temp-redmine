@@ -1,7 +1,7 @@
 import { execFileSync } from 'node:child_process';
 import path from 'node:path';
 import { test, expect } from '@playwright/test';
-import { loginAsAdmin, ADMIN_LOGIN, ADMIN_DEV_PASSWORD } from './utils';
+import { loginAsAdmin, loginAsNonAdminUser, ADMIN_LOGIN, ADMIN_DEV_PASSWORD, NON_ADMIN_LOGIN } from './utils';
 
 // Repo root, resolved relative to this file (see global-setup.ts for why not
 // a relative `cwd`).
@@ -27,6 +27,10 @@ function uniqueName(prefix: string): string {
 
 test.describe('Personal access tokens (My account)', () => {
   test('create shows the raw value once; reloading the list does not duplicate or re-reveal it', async ({ page }) => {
+    // Fail-closed default: at least one permission must be admin-allowed
+    // before any new token (scoped or not) can be created at all.
+    railsRunner("Setting.personal_access_token_allowed_scopes = ['view_issues']");
+
     await loginAsAdmin(page);
 
     await page.goto('/my/account');
@@ -40,6 +44,7 @@ test.describe('Personal access tokens (My account)', () => {
     await page.fill('#personal_access_token_name', tokenName);
     const expiresOn = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
     await page.fill('#personal_access_token_expires_on', expiresOn);
+    await page.check('#personal_access_token_scopes_view_issues');
     await page.click('input[type=submit]');
 
     // Redirected to the list, with the raw value shown exactly once.
@@ -62,6 +67,8 @@ test.describe('Personal access tokens (My account)', () => {
   });
 
   test('list shows the correct name, expiration and scope for a scoped token', async ({ page }) => {
+    railsRunner("Setting.personal_access_token_allowed_scopes = ['view_issues']");
+
     await loginAsAdmin(page);
 
     await page.goto('/my/personal_access_tokens/new');
@@ -97,7 +104,7 @@ test.describe('Personal access tokens (My account)', () => {
     railsRunner(`
       u = User.find_by_login('${ADMIN_LOGIN}')
       3.times do |i|
-        u.personal_access_tokens.create!(name: "${namePrefix}-#{i}", expires_on: 30.days.from_now.to_date)
+        u.personal_access_tokens.create!(name: "${namePrefix}-#{i}", expires_on: 30.days.from_now.to_date, scopes: 'view_issues')
       end
     `);
 
@@ -148,6 +155,8 @@ test.describe('Personal access tokens (My account)', () => {
   });
 
   test('revoking a token via the UI removes it from the list', async ({ page }) => {
+    railsRunner("Setting.personal_access_token_allowed_scopes = ['view_issues']");
+
     await loginAsAdmin(page);
 
     await page.goto('/my/personal_access_tokens/new');
@@ -155,6 +164,7 @@ test.describe('Personal access tokens (My account)', () => {
     await page.fill('#personal_access_token_name', tokenName);
     const expiresOn = new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
     await page.fill('#personal_access_token_expires_on', expiresOn);
+    await page.check('#personal_access_token_scopes_view_issues');
     await page.click('input[type=submit]');
 
     await expect(page).toHaveURL(/\/my\/personal_access_tokens$/);
@@ -166,5 +176,119 @@ test.describe('Personal access tokens (My account)', () => {
 
     await expect(page).toHaveURL(/\/my\/personal_access_tokens$/);
     await expect(page.locator('tr', { hasText: tokenName })).toHaveCount(0);
+  });
+
+  test('with nothing admin-allowed, "New personal access token" shows the empty-picker message and blocks creation', async ({ page }) => {
+    railsRunner('Setting.personal_access_token_allowed_scopes = []');
+
+    await loginAsAdmin(page);
+    await page.goto('/my/personal_access_tokens/new');
+
+    await expect(page.locator('body')).toContainText(/No permissions have been enabled for personal access tokens yet/i);
+    await expect(page.locator('#personal_access_token_scopes fieldset')).toHaveCount(0);
+
+    const tokenName = uniqueName('no-scopes-allowed');
+    await page.fill('#personal_access_token_name', tokenName);
+    const expiresOn = new Date(Date.now() + 10 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+    await page.fill('#personal_access_token_expires_on', expiresOn);
+    await page.click('input[type=submit]');
+
+    // No scopes were possible to submit, so the create fails validation and
+    // re-renders the form instead of redirecting to the list.
+    await expect(page.locator('#errorExplanation')).toBeVisible();
+
+    await page.goto('/my/personal_access_tokens');
+    await expect(page.locator('tr', { hasText: tokenName })).toHaveCount(0);
+  });
+
+  test('admin enables a permission for PAT scopes; a user can then create a token scoped to it, and disabling it again removes it from the picker', async ({ page, browser }) => {
+    test.setTimeout(90_000);
+    railsRunner('Setting.personal_access_token_allowed_scopes = []');
+
+    // --- Admin enables `log_time` on Settings > API ---
+    await loginAsAdmin(page);
+    await page.goto('/settings/edit?tab=api');
+    await page.check('#settings_personal_access_token_allowed_scopes_log_time');
+    // Every settings tab's form (and submit button) is present in the DOM at
+    // once, hidden via inline style except the active one - `input[type=submit]`
+    // alone would resolve to the first (hidden) tab's button instead of this one.
+    await page.click('#tab-content-api input[type=submit]');
+    await expect(page).toHaveURL(/\/settings/);
+    await expect(page.locator('#settings_personal_access_token_allowed_scopes_log_time')).toBeChecked();
+
+    // --- A regular (non-admin) user can now see and use that scope ---
+    const nonAdminContext = await browser.newContext();
+    const nonAdminPage = await nonAdminContext.newPage();
+    await loginAsNonAdminUser(nonAdminPage);
+    await nonAdminPage.goto('/my/personal_access_tokens/new');
+    await expect(nonAdminPage.locator('#personal_access_token_scopes_log_time')).toBeVisible();
+
+    const tokenName = uniqueName('log-time-scope');
+    await nonAdminPage.fill('#personal_access_token_name', tokenName);
+    const expiresOn = new Date(Date.now() + 10 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+    await nonAdminPage.fill('#personal_access_token_expires_on', expiresOn);
+    await nonAdminPage.check('#personal_access_token_scopes_log_time');
+    await nonAdminPage.click('input[type=submit]');
+    await expect(nonAdminPage).toHaveURL(/\/my\/personal_access_tokens$/);
+    await expect(nonAdminPage.locator('tr', { hasText: tokenName })).toBeVisible();
+
+    // --- Admin disables it again ---
+    await page.goto('/settings/edit?tab=api');
+    await page.uncheck('#settings_personal_access_token_allowed_scopes_log_time');
+    await page.click('#tab-content-api input[type=submit]');
+    await expect(page).toHaveURL(/\/settings/);
+    await expect(page.locator('#settings_personal_access_token_allowed_scopes_log_time')).not.toBeChecked();
+
+    // --- The picker no longer offers it - proves the allow-list is read
+    // fresh on every render, not cached from the earlier page load ---
+    await nonAdminPage.goto('/my/personal_access_tokens/new');
+    await expect(nonAdminPage.locator('#personal_access_token_scopes_log_time')).toHaveCount(0);
+
+    await nonAdminContext.close();
+  });
+
+  test('a token scoped to a permission that is later disabled via Settings > API is denied (401), not merely forbidden, on its next API request', async ({ page, request }) => {
+    test.setTimeout(60_000);
+    railsRunner("Setting.personal_access_token_allowed_scopes = ['log_time']");
+    // This dev DB has no demo data (no projects/roles/activities), and the
+    // REST API is off by default - all needed here for a genuine end-to-end
+    // authenticated request, not just for the PAT scoping under test. Uses
+    // the non-admin dev user (not admin): a scoped PAT strips the usual
+    // admin bypass (see User#admin?), and admin isn't a member of any
+    // project, so a scoped admin token would be denied for an unrelated
+    // reason instead of the one this test is proving.
+    const tokenName = uniqueName('log-time-then-disabled');
+    const projectIdentifier = uniqueName('pat-scope-test').toLowerCase();
+    const setupOut = railsRunner(`
+      Setting.rest_api_enabled = '1'
+      activity = TimeEntryActivity.first || TimeEntryActivity.create!(name: 'PAT Scope Test Activity')
+      project = Project.create!(name: 'PAT Scope Test', identifier: '${projectIdentifier}')
+      project.enabled_module_names = ['time_tracking']
+      role = Role.create!(name: "${projectIdentifier}-role", permissions: [:log_time])
+      user = User.find_by_login('${NON_ADMIN_LOGIN}')
+      Member.create!(project: project, user: user, roles: [role])
+      pat = user.personal_access_tokens.create!(name: "${tokenName}", expires_on: 30.days.from_now.to_date, scopes: 'log_time')
+      puts "#{project.id}|#{activity.id}|#{pat.value}"
+    `);
+    const [projectId, activityId, tokenValue] = setupOut.trim().split('\n').filter(Boolean).pop()!.split('|');
+
+    const timeEntryParams = {
+      time_entry: {project_id: projectId, hours: 1, activity_id: activityId, spent_on: new Date().toISOString().slice(0, 10)},
+    };
+
+    // Works while `log_time` is still admin-allowed.
+    const okResponse = await request.post(`/time_entries.xml?key=${tokenValue}`, {data: timeEntryParams});
+    expect(okResponse.status()).toBe(201);
+
+    // Admin disables `log_time` via Settings > API.
+    await loginAsAdmin(page);
+    await page.goto('/settings/edit?tab=api');
+    await page.uncheck('#settings_personal_access_token_allowed_scopes_log_time');
+    await page.click('#tab-content-api input[type=submit]');
+    await expect(page.locator('#settings_personal_access_token_allowed_scopes_log_time')).not.toBeChecked();
+
+    // The same already-issued token is now denied outright (401), not 403.
+    const deniedResponse = await request.post(`/time_entries.xml?key=${tokenValue}`, {data: timeEntryParams});
+    expect(deniedResponse.status()).toBe(401);
   });
 });

@@ -174,10 +174,10 @@ class ApplicationController < ActionController::Base
 
   # Finds a user by Personal Access Token, falling back to the legacy API key
   def find_user_by_pat_or_api_key(key)
-    if (pat = PersonalAccessToken.find_by_value(key)) && !pat.expired?
+    if (pat = PersonalAccessToken.find_by_value(key)) && !pat.expired? && !pat.scopes_disabled?
       user = pat.user
       pat.touch_last_used!
-      user.oauth_scope = pat.scope_list if pat.scope_list
+      user.oauth_scope = pat.effective_scope_list if pat.scope_list
       user
     else
       User.find_by_api_key(key)

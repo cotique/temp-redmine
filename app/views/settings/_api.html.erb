@@ -6,5 +6,16 @@
 <p><%= setting_check_box :jsonp_enabled %></p>
 </div>
 
+<fieldset class="box" id="personal_access_token_allowed_scopes">
+<legend><%= l(:setting_personal_access_token_allowed_scopes) %></legend>
+<p class="text-muted"><%= l(:text_personal_access_token_allowed_scopes_info) %></p>
+<%= render :partial => 'common/permission_checkboxes',
+           :locals => {
+             :permissions => Redmine::AccessControl.permissions.reject(&:public?),
+             :field_name => 'settings[personal_access_token_allowed_scopes]',
+             :checked => lambda {|name| Setting.personal_access_token_allowed_scopes.include?(name.to_s)}
+           } %>
+</fieldset>
+
 <%= submit_tag l(:button_save) %>
 <% end %>

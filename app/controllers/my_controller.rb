@@ -161,7 +161,7 @@ class MyController < ApplicationController
   # Form to create a new personal access token
   def new_personal_access_token
     @personal_access_token = PersonalAccessToken.new
-    @permissions = Redmine::AccessControl.permissions.reject(&:public?)
+    @permissions = PersonalAccessToken.allowed_permissions
   end
 
   # Create a new personal access token
@@ -171,7 +171,10 @@ class MyController < ApplicationController
     @personal_access_token.user = User.current
     @personal_access_token.name = attrs[:name]
     @personal_access_token.expires_on = attrs[:expires_on]
-    @personal_access_token.scopes = Array(attrs[:scopes]).reject(&:blank?).join(' ')
+
+    allowed_names = PersonalAccessToken.allowed_permission_names.map(&:to_s)
+    submitted = Array(attrs[:scopes]).reject(&:blank?)
+    @personal_access_token.scopes = (submitted & allowed_names).join(' ')
 
     max_lifetime = Setting.personal_access_token_max_lifetime.to_i
     if max_lifetime > 0
@@ -186,7 +189,7 @@ class MyController < ApplicationController
       flash[:personal_access_token_value] = @personal_access_token.value
       redirect_to my_personal_access_tokens_path
     else
-      @permissions = Redmine::AccessControl.permissions.reject(&:public?)
+      @permissions = PersonalAccessToken.allowed_permissions
       render :action => 'new_personal_access_token'
     end
   end

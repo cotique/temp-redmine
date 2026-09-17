@@ -510,6 +510,7 @@ en:
   setting_session_lifetime: Session maximum lifetime
   setting_session_timeout: Session inactivity timeout
   setting_personal_access_token_max_lifetime: "Maximum personal access token lifetime (days)"
+  setting_personal_access_token_allowed_scopes: "Permissions allowed as personal access token scopes"
   setting_thumbnails_enabled: Display attachment thumbnails
   setting_thumbnails_size: Thumbnails size (in pixels)
   setting_non_working_week_days: Non-working days
@@ -1291,6 +1292,8 @@ en:
   text_workflow_edit: Select a role and a tracker to edit the workflow
   text_are_you_sure: Are you sure?
   text_personal_access_token_value_warning: "Make sure to copy your personal access token now. You won't be able to see it again!"
+  text_personal_access_token_allowed_scopes_info: "No permissions are allowed as personal access token scopes until at least one is checked here. Until then, users cannot create new personal access tokens."
+  text_personal_access_token_no_allowed_scopes_configured: "No permissions have been enabled for personal access tokens yet. Ask an administrator to enable at least one under Administration → Settings → API."
   text_journal_changed: "%{label} changed from %{old} to %{new}"
   text_journal_changed_no_detail: "%{label} updated"
   text_journal_set_to: "%{label} set to %{value}"

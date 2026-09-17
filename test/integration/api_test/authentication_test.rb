@@ -70,19 +70,25 @@ class Redmine::ApiTest::AuthenticationTest < Redmine::ApiTest::Base
   end
 
   def test_api_should_accept_http_basic_auth_using_personal_access_token
-    user = User.generate!
-    pat = PersonalAccessToken.create!(:user => user, :name => 'my token', :expires_on => 30.days.from_now)
-    get '/users/current.xml', :headers => credentials(pat.value, 'X')
-    assert_response :ok
+    with_settings :personal_access_token_allowed_scopes => %w(view_issues) do
+      user = User.generate!
+      pat = PersonalAccessToken.create!(:user => user, :name => 'my token', :expires_on => 30.days.from_now,
+                                         :scopes => 'view_issues')
+      get '/users/current.xml', :headers => credentials(pat.value, 'X')
+      assert_response :ok
+    end
   end
 
   def test_api_should_deny_http_basic_auth_using_revoked_personal_access_token
-    user = User.generate!
-    pat = PersonalAccessToken.create!(:user => user, :name => 'revoked token', :expires_on => 30.days.from_now)
-    value = pat.value
-    pat.destroy
-    get '/users/current.xml', :headers => credentials(value, 'X')
-    assert_response :unauthorized
+    with_settings :personal_access_token_allowed_scopes => %w(view_issues) do
+      user = User.generate!
+      pat = PersonalAccessToken.create!(:user => user, :name => 'revoked token', :expires_on => 30.days.from_now,
+                                         :scopes => 'view_issues')
+      value = pat.value
+      pat.destroy
+      get '/users/current.xml', :headers => credentials(value, 'X')
+      assert_response :unauthorized
+    end
   end
 
   def test_api_should_accept_auth_using_api_key_as_parameter
@@ -100,30 +106,39 @@ class Redmine::ApiTest::AuthenticationTest < Redmine::ApiTest::Base
   end
 
   def test_api_should_accept_auth_using_personal_access_token_as_parameter
-    user = User.generate!
-    pat = PersonalAccessToken.create!(:user => user, :name => 'my token', :expires_on => 30.days.from_now)
-    get "/users/current.xml?key=#{pat.value}"
-    assert_response :ok
+    with_settings :personal_access_token_allowed_scopes => %w(view_issues) do
+      user = User.generate!
+      pat = PersonalAccessToken.create!(:user => user, :name => 'my token', :expires_on => 30.days.from_now,
+                                         :scopes => 'view_issues')
+      get "/users/current.xml?key=#{pat.value}"
+      assert_response :ok
+    end
   end
 
   def test_api_should_deny_auth_using_expired_personal_access_token_as_parameter
-    user = User.generate!
-    pat = PersonalAccessToken.create!(:user => user, :name => 'expired token', :expires_on => 30.days.from_now)
-    # Simulate the token having expired since creation (expires_on cannot be set
-    # to a past date at creation time), bypassing validations/callbacks the same
-    # way touch_last_used! does.
-    pat.update_column(:expires_on, 1.day.ago)
-    get "/users/current.xml?key=#{pat.value}"
-    assert_response :unauthorized
+    with_settings :personal_access_token_allowed_scopes => %w(view_issues) do
+      user = User.generate!
+      pat = PersonalAccessToken.create!(:user => user, :name => 'expired token', :expires_on => 30.days.from_now,
+                                         :scopes => 'view_issues')
+      # Simulate the token having expired since creation (expires_on cannot be set
+      # to a past date at creation time), bypassing validations/callbacks the same
+      # way touch_last_used! does.
+      pat.update_column(:expires_on, 1.day.ago)
+      get "/users/current.xml?key=#{pat.value}"
+      assert_response :unauthorized
+    end
   end
 
   def test_api_should_deny_auth_using_revoked_personal_access_token_as_parameter
-    user = User.generate!
-    pat = PersonalAccessToken.create!(:user => user, :name => 'revoked token', :expires_on => 30.days.from_now)
-    value = pat.value
-    pat.destroy
-    get "/users/current.xml?key=#{value}"
-    assert_response :unauthorized
+    with_settings :personal_access_token_allowed_scopes => %w(view_issues) do
+      user = User.generate!
+      pat = PersonalAccessToken.create!(:user => user, :name => 'revoked token', :expires_on => 30.days.from_now,
+                                         :scopes => 'view_issues')
+      value = pat.value
+      pat.destroy
+      get "/users/current.xml?key=#{value}"
+      assert_response :unauthorized
+    end
   end
 
   # Regression check: legacy API keys (Token#action == 'api') must keep authenticating
@@ -150,10 +165,13 @@ class Redmine::ApiTest::AuthenticationTest < Redmine::ApiTest::Base
   end
 
   def test_api_should_accept_auth_using_personal_access_token_as_request_header
-    user = User.generate!
-    pat = PersonalAccessToken.create!(:user => user, :name => 'my token', :expires_on => 30.days.from_now)
-    get "/users/current.xml", :headers => {'X-Redmine-API-Key' => pat.value.to_s}
-    assert_response :ok
+    with_settings :personal_access_token_allowed_scopes => %w(view_issues) do
+      user = User.generate!
+      pat = PersonalAccessToken.create!(:user => user, :name => 'my token', :expires_on => 30.days.from_now,
+                                         :scopes => 'view_issues')
+      get "/users/current.xml", :headers => {'X-Redmine-API-Key' => pat.value.to_s}
+      assert_response :ok
+    end
   end
 
   # jsmith (user #2) is a Manager (roles_001) on project #1 / eCookbook
@@ -162,39 +180,79 @@ class Redmine::ApiTest::AuthenticationTest < Redmine::ApiTest::Base
   # permission set to prove PAT scope restriction against real fixtures rather
   # than inventing a new project/role.
   def test_api_should_accept_auth_using_personal_access_token_scoped_to_a_permission_the_role_has
-    user = User.find(2)
-    pat =
-      PersonalAccessToken.create!(
-        :user => user, :name => 'view issues scope',
-        :expires_on => 30.days.from_now, :scopes => 'view_issues')
-    get "/issues/1.xml?key=#{pat.value}"
-    assert_response :ok
+    with_settings :personal_access_token_allowed_scopes => %w(view_issues) do
+      user = User.find(2)
+      pat =
+        PersonalAccessToken.create!(
+          :user => user, :name => 'view issues scope',
+          :expires_on => 30.days.from_now, :scopes => 'view_issues')
+      get "/issues/1.xml?key=#{pat.value}"
+      assert_response :ok
+    end
   end
 
   # Manager also has :log_time, so a PAT scoped down to only that permission
   # proves the scope actively narrows access below the role's real grant,
   # rather than merely mirroring a permission the role never had at all.
   def test_api_should_deny_auth_using_personal_access_token_scoped_away_from_a_permission_the_role_has
-    user = User.find(2)
-    pat =
-      PersonalAccessToken.create!(
-        :user => user, :name => 'log time only scope',
-        :expires_on => 30.days.from_now, :scopes => 'log_time')
-    get "/issues/1.xml?key=#{pat.value}"
-    assert_response :forbidden
+    with_settings :personal_access_token_allowed_scopes => %w(log_time) do
+      user = User.find(2)
+      pat =
+        PersonalAccessToken.create!(
+          :user => user, :name => 'log time only scope',
+          :expires_on => 30.days.from_now, :scopes => 'log_time')
+      get "/issues/1.xml?key=#{pat.value}"
+      assert_response :forbidden
+    end
   end
 
   def test_api_should_deny_auth_using_personal_access_token_scoped_to_a_permission_the_role_lacks
+    with_settings :personal_access_token_allowed_scopes => %w(edit_issue_notes) do
+      user = User.find(2)
+      pat =
+        PersonalAccessToken.create!(
+          :user => user, :name => 'edit issue notes scope',
+          :expires_on => 30.days.from_now, :scopes => 'edit_issue_notes')
+      put(
+        '/journals/1.xml',
+        :params => {:journal => {:notes => 'changed via scoped PAT'}},
+        :headers => {'X-Redmine-API-Key' => pat.value.to_s})
+      assert_response :forbidden
+    end
+  end
+
+  # Proves the request-time re-check (ApplicationController#find_user_by_pat_or_api_key /
+  # PersonalAccessToken#scopes_disabled?): the SAME already-issued token is denied outright
+  # (401, not merely 403) once its scope is removed from the admin allow-list, without the
+  # token record itself being touched. Uses a write action (creating a time entry) rather
+  # than reading an issue, since anonymous can read public issues - which would make a 401
+  # here indistinguishable from "the request fell back to anonymous access".
+  def test_api_should_deny_auth_using_personal_access_token_once_its_scope_is_removed_from_the_allow_list
     user = User.find(2)
-    pat =
-      PersonalAccessToken.create!(
-        :user => user, :name => 'edit issue notes scope',
-        :expires_on => 30.days.from_now, :scopes => 'edit_issue_notes')
-    put(
-      '/journals/1.xml',
-      :params => {:journal => {:notes => 'changed via scoped PAT'}},
-      :headers => {'X-Redmine-API-Key' => pat.value.to_s})
-    assert_response :forbidden
+    pat = nil
+    with_settings :personal_access_token_allowed_scopes => %w(log_time) do
+      pat =
+        PersonalAccessToken.create!(
+          :user => user, :name => 'log time scope, later disabled',
+          :expires_on => 30.days.from_now, :scopes => 'log_time')
+      assert_difference 'TimeEntry.count' do
+        post(
+          '/time_entries.xml',
+          :params => {:time_entry => {:project_id => 1, :hours => 1, :activity_id => 10, :spent_on => Date.today}},
+          :headers => {'X-Redmine-API-Key' => pat.value.to_s})
+      end
+      assert_response :created
+    end
+
+    with_settings :personal_access_token_allowed_scopes => [] do
+      assert_no_difference 'TimeEntry.count' do
+        post(
+          '/time_entries.xml',
+          :params => {:time_entry => {:project_id => 1, :hours => 1, :activity_id => 10, :spent_on => Date.today}},
+          :headers => {'X-Redmine-API-Key' => pat.value.to_s})
+      end
+      assert_response :unauthorized
+    end
   end
 
   def test_api_should_trigger_basic_http_auth_with_basic_authorization_header

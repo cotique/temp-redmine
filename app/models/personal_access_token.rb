@@ -24,7 +24,7 @@ class PersonalAccessToken < ApplicationRecord
 
   belongs_to :user
 
-  validates_presence_of :name, :expires_on
+  validates_presence_of :name, :expires_on, :scopes
   validates_uniqueness_of :name, scope: :user_id
   validate :expires_on_cannot_be_in_the_past
 
@@ -34,6 +34,24 @@ class PersonalAccessToken < ApplicationRecord
   attr_accessor :value
 
   before_create :generate_token
+
+  # The permission names that may currently be used as Personal Access Token scopes -
+  # the intersection of the real permission universe and whatever an admin has
+  # explicitly enabled via Setting.personal_access_token_allowed_scopes. A blank/default
+  # setting is simply an empty list here, same as any other empty configured list - it
+  # is NOT special-cased to mean "unrestricted" (see the role.rb citation above for why
+  # that kind of shortcut is exactly the mistake to avoid). No caching: reads Setting
+  # fresh on every call, consistent with this feature's existing "no new caching layer"
+  # trade-off.
+  def self.allowed_permissions
+    full = Redmine::AccessControl.permissions.reject(&:public?)
+    configured = Array(Setting.personal_access_token_allowed_scopes).map(&:to_s)
+    full.select {|permission| configured.include?(permission.name.to_s)}
+  end
+
+  def self.allowed_permission_names
+    allowed_permissions.map(&:name)
+  end
 
   # Finds the PersonalAccessToken matching the given raw token value, or nil
   def self.find_by_value(raw_value)
@@ -57,6 +75,27 @@ class PersonalAccessToken < ApplicationRecord
     return nil if scopes.blank?
 
     scopes.to_s.split.map(&:to_sym)
+  end
+
+  # This token's scopes, narrowed to whatever the admin allow-list currently
+  # permits (Setting.personal_access_token_allowed_scopes may have changed
+  # since this token was created). nil when the token itself is unrestricted
+  # (blank scopes - see scope_list); an array, possibly empty, otherwise.
+  def effective_scope_list
+    return nil unless scope_list
+
+    scope_list & self.class.allowed_permission_names
+  end
+
+  # True when this token WAS created with specific scopes, but every one of
+  # them has since been disabled by the admin allow-list, leaving nothing it
+  # can still do. Used to deny the token outright (see
+  # ApplicationController#find_user_by_pat_or_api_key) instead of assigning
+  # an empty oauth_scope - Role#allowed_permissions treats [] the same as no
+  # scope at all (unrestricted), so an empty effective_scope_list must be
+  # handled as an explicit denial, not passed through as a scope value.
+  def scopes_disabled?
+    scope_list.present? && effective_scope_list.empty?
   end
 
   # Updates last_used_on without running validations/callbacks

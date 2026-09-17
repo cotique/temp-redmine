@@ -52,6 +52,36 @@ intersection, `require_sudo_mode`, admin resourceful CRUD, `admin_menu` registra
   `RolesController`'s unpaginated list is — an account's own token list is unbounded in practice
   over its lifetime precisely because nothing ever prunes it.
 
+- **No caching on the admin-allowed-scopes lookup (Step 5).** `PersonalAccessToken.allowed_permissions`
+  / `allowed_permission_names` read `Setting.personal_access_token_allowed_scopes` fresh on every
+  call — at token-creation time in `MyController`, at request time in
+  `ApplicationController#find_user_by_pat_or_api_key`, and when rendering the scope picker and the
+  admin checkbox UI. This is the same "no hot-path caching layer exists in this codebase" reasoning
+  as the last-used-write trade-off above, applied to a second read that now also happens on every
+  authenticated API request, not just on writes. `Setting`'s own built-in per-request cache
+  (`@cached_settings`, invalidated by `check_cache` in `ApplicationController#user_setup`) already
+  covers the ordinary case of a setting not changing mid-request; nothing beyond that is added.
+
+- **No auto-revocation or notification when a token's scopes are all disabled (Step 5).** If an
+  admin removes every permission a given token was scoped to from the allow-list, that token is
+  denied outright on its next authentication attempt (see Step 5's own plan for the exact
+  mechanism), but it is not revoked and nobody (admin or token owner) is notified — the row keeps
+  existing, inert, until a human revokes it manually or it expires. This is a deliberate scope cut,
+  not an oversight: proactive revocation and/or a notification are both plausible future work, but
+  neither is needed for the security property this step is actually after (an already-disabled
+  permission can no longer be exercised via any PAT on its very next request), and adding either
+  now would be new behavior beyond what was asked for.
+
+- **The Step 5 allow-list fails closed by default.** `Setting.personal_access_token_allowed_scopes`
+  defaults to empty, which means "no permission is currently allowed as a PAT scope" — not
+  "unrestricted." Combined with Step 5's own model-level "at least one scope required" validation
+  (`validates_presence_of :name, :expires_on, :scopes`, no exceptions), no Personal Access Token can
+  be created at all until an instance admin visits Settings → API and explicitly enables at least
+  one permission. Step 3's original "blank scopes = unrestricted/full access" design is fully
+  superseded by this — there is no grandfathering, since Steps 1 through 5 ship together as a single
+  delivery with no real window where a blank-scope token could have been created and left in use.
+  See Step 5's own plan for the full reasoning.
+
 ## Steps
 
 Each step is a self-contained, ready-to-paste prompt for a worker Claude session with no prior
@@ -77,6 +107,13 @@ context. Run them in order — each one's prerequisite check assumes the previou
    logging-infrastructure change.
 6. [Step 3 — Self-service UI in My Account](43881-03-self-service-ui.md)
 7. [Step 4 — Admin cross-user management panel](43881-04-admin-panel.md)
+8. [Step 5 — Admin-managed allow-list for PAT scopes](43881-05-scopes-management.md) — Step 3's
+   scope picker lets a user request any non-public permission as a token scope; this step adds an
+   admin-editable allow-list (`Setting.personal_access_token_allowed_scopes`, empty/nothing-allowed
+   by default) that narrows the universe Step 3 draws from, enforced both at token-creation time
+   and, critically, at every authenticated request (not just creation), so disabling a permission
+   instance-wide takes effect on an already-issued token's very next request — by denying that
+   token outright, not by assigning it an empty scope.
 
 ## Constraints that apply to every step
 
