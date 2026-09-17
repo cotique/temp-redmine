@@ -40,7 +40,7 @@ Verify — UI verification MUST be done with Playwright, not by reading code and
   - Asserts sudo mode is actually enforced on these actions the same way it already is on the existing `show_api_key`/`reset_api_key` actions (read how MyController's existing sudo-mode behavior surfaces in the UI — e.g. a re-authentication prompt — and assert the new actions trigger the same thing).
   - Revokes a token via the UI and asserts it disappears from the list.
 - From `playwright/`: `npm install && npx playwright install chromium` (if not already done), then `npx playwright test`. All specs must pass — paste the actual terminal output in your final report, not a description of what you expect it to show.
-- Separately (not via Playwright — this is an API-level check, not a UI one), spot check via Step 2's API-auth path that the revoked token's raw value no longer authenticates.
+- No separate API-level revocation check is needed here anymore: Step 2.2 already added a permanent Minitest test proving a destroyed `PersonalAccessToken` stops authenticating (`test_api_should_deny_auth_using_revoked_personal_access_token_as_parameter` in `test/integration/api_test/authentication_test.rb`), and this step's own Playwright spec already proves the UI's revoke action removes the record (which, for an ActiveRecord `.destroy`, is the same as the row being gone from the DB — the auth consequence of that is what Step 2.2 covers). Don't re-add an ad hoc curl/API spot-check for this; it would just be testing the same already-proven mechanism a second time. (This bullet replaces an earlier version of this plan that predated Step 2.2 and asked for exactly that redundant check.)
 - Run `bundle exec rubocop app/controllers/my_controller.rb`.
 
 Constraints:

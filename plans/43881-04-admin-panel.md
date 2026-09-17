@@ -38,7 +38,7 @@ Verify — UI verification MUST be done with Playwright, not by reading code and
   - Revokes one token from the admin panel and asserts it disappears from the admin list.
   - Logs in as the non-admin user and navigates directly to the admin URL (e.g. `/personal_access_tokens`), asserting the response is a denial (403 page or redirect away from the admin page — assert on whatever the app actually does for a non-admin hitting an admin-only page, don't assume).
 - From `playwright/`: `npx playwright test`. All specs (including the ones from Step 3) must still pass — paste the actual terminal output in your final report.
-- Separately (not via Playwright — this is an API-level check), confirm via Step 2's API path that a token revoked from the admin panel no longer authenticates.
+- No separate API-level revocation check is needed here anymore: Step 2.2 already added a permanent Minitest test proving a destroyed `PersonalAccessToken` stops authenticating (`test_api_should_deny_auth_using_revoked_personal_access_token_as_parameter` in `test/integration/api_test/authentication_test.rb`), and this step's own Playwright spec already proves the admin panel's revoke action removes the record. Don't re-add an ad hoc curl/API spot-check for this. (This bullet replaces an earlier version of this plan that predated Step 2.2 and asked for exactly that redundant check.)
 - Run `bundle exec rubocop app/controllers/personal_access_tokens_controller.rb lib/redmine/preparation.rb`.
 
 Constraints:
