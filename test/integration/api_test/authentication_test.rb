@@ -108,7 +108,11 @@ class Redmine::ApiTest::AuthenticationTest < Redmine::ApiTest::Base
 
   def test_api_should_deny_auth_using_expired_personal_access_token_as_parameter
     user = User.generate!
-    pat = PersonalAccessToken.create!(:user => user, :name => 'expired token', :expires_on => 1.day.ago)
+    pat = PersonalAccessToken.create!(:user => user, :name => 'expired token', :expires_on => 30.days.from_now)
+    # Simulate the token having expired since creation (expires_on cannot be set
+    # to a past date at creation time), bypassing validations/callbacks the same
+    # way touch_last_used! does.
+    pat.update_column(:expires_on, 1.day.ago)
     get "/users/current.xml?key=#{pat.value}"
     assert_response :unauthorized
   end

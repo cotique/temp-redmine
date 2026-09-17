@@ -26,6 +26,7 @@ class PersonalAccessToken < ApplicationRecord
 
   validates_presence_of :name, :expires_on
   validates_uniqueness_of :name, scope: :user_id
+  validate :expires_on_cannot_be_in_the_past
 
   # One-time raw token value, only available right after the record is
   # created. Never persisted: only its SHA256 digest is stored in
@@ -68,5 +69,11 @@ class PersonalAccessToken < ApplicationRecord
   def generate_token
     self.value = "#{TOKEN_PREFIX}#{Redmine::Utils.random_hex(20)}"
     self.token_digest = Digest::SHA256.hexdigest(value)
+  end
+
+  def expires_on_cannot_be_in_the_past
+    return if expires_on.blank?
+
+    errors.add(:expires_on, :cannot_be_in_the_past) if expires_on < Date.today
   end
 end
