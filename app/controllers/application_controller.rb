@@ -130,13 +130,7 @@ class ApplicationController < ActionController::Base
     if user.nil? && Setting.rest_api_enabled? && accept_api_auth?
       if (key = api_key_from_request)
         # Personal Access Token, falling back to the legacy API key
-        if (pat = PersonalAccessToken.find_by_value(key)) && !pat.expired?
-          user = pat.user
-          pat.touch_last_used!
-          user.oauth_scope = pat.scope_list if pat.scope_list
-        else
-          user = User.find_by_api_key(key)
-        end
+        user = find_user_by_pat_or_api_key(key)
       elsif access_token = Doorkeeper.authenticate(request)
         # Oauth
         if access_token.accessible?
@@ -155,7 +149,7 @@ class ApplicationController < ActionController::Base
             return
           end
 
-          user ||= User.find_by_api_key(username)
+          user ||= find_user_by_pat_or_api_key(username)
         end
         if user && user.must_change_password?
           render_error :message => 'You must change your password', :status => 403
@@ -177,6 +171,19 @@ class ApplicationController < ActionController::Base
     user.remote_ip = request.remote_ip if user
     user
   end
+
+  # Finds a user by Personal Access Token, falling back to the legacy API key
+  def find_user_by_pat_or_api_key(key)
+    if (pat = PersonalAccessToken.find_by_value(key)) && !pat.expired?
+      user = pat.user
+      pat.touch_last_used!
+      user.oauth_scope = pat.scope_list if pat.scope_list
+      user
+    else
+      User.find_by_api_key(key)
+    end
+  end
+  private :find_user_by_pat_or_api_key
 
   def autologin_cookie_name
     Redmine::Configuration['autologin_cookie_name'].presence || 'autologin'
