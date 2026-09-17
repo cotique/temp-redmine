@@ -107,7 +107,7 @@ class PersonalAccessTokenTest < ActiveSupport::TestCase
 
   def test_allowed_permissions_should_be_narrowed_to_the_configured_setting
     with_settings :personal_access_token_allowed_scopes => %w(view_issues log_time) do
-      assert_equal %i(log_time view_issues), PersonalAccessToken.allowed_permission_names.sort
+      assert_equal [:log_time, :view_issues], PersonalAccessToken.allowed_permission_names.sort
     end
   end
 
