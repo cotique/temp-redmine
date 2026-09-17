@@ -338,6 +338,7 @@ en:
   field_new_password: New password
   field_password_confirmation: Confirmation
   field_twofa_scheme: Two-factor authentication scheme
+  field_personal_access_token: "Personal access token"
   field_version: Version
   field_type: Type
   field_host: Host
@@ -502,6 +503,7 @@ en:
   setting_unsubscribe: Allow users to delete their own account
   setting_session_lifetime: Session maximum lifetime
   setting_session_timeout: Session inactivity timeout
+  setting_personal_access_token_max_lifetime: "Maximum personal access token lifetime (days)"
   setting_thumbnails_enabled: Display attachment thumbnails
   setting_thumbnails_size: Thumbnails size (in pixels)
   setting_non_working_week_days: Non-working days
