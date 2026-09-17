@@ -59,8 +59,13 @@ context. Run them in order — each one's prerequisite check assumes the previou
 
 1. [Step 1 — Data model + Setting](43881-01-data-model-and-setting.md)
 2. [Step 2 — Wire into authentication + authorization](43881-02-authentication-and-authorization.md)
-3. [Step 3 — Self-service UI in My Account](43881-03-self-service-ui.md)
-4. [Step 4 — Admin cross-user management panel](43881-04-admin-panel.md)
+3. [Step 2.1 — Extend PAT support to HTTP Basic auth](43881-02.1-http-basic-auth.md) — a fix-up
+   found during Step 2's own verification, not part of the original design: Step 2's plan
+   contradicted itself (expected PAT-via-HTTP-Basic to work, but also hard-constrained "don't touch
+   the HTTP Basic branch"). The worker correctly followed the explicit constraint and flagged the
+   resulting gap instead of guessing. This step closes it.
+4. [Step 3 — Self-service UI in My Account](43881-03-self-service-ui.md)
+5. [Step 4 — Admin cross-user management panel](43881-04-admin-panel.md)
 
 ## Constraints that apply to every step
 
