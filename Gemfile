@@ -2,18 +2,18 @@ source 'https://rubygems.org'
 
 ruby '>= 3.2.0', '< 3.5.0'
 
-gem 'rails', '7.2.3'
+gem 'rails', '7.2.3.2'
 gem 'rouge', '~> 4.5'
 gem 'mini_mime', '~> 1.1.0'
 gem "actionpack-xml_parser"
 gem 'roadie-rails', '~> 3.3.0'
 gem 'marcel'
-gem 'mail', '~> 2.8.1'
+gem 'mail', '~> 2.9.0'
 gem 'nokogiri', '~> 1.19.1'
 gem 'i18n', '~> 1.14.1'
 gem 'rbpdf', '~> 1.21.4'
 gem 'addressable'
-gem 'rubyzip', '~> 2.4.0'
+gem 'rubyzip', '~> 3.4.0'
 gem 'propshaft', '~> 1.1.0'
 gem 'rack', '>= 3.1.3'
 gem "stimulus-rails", "~> 1.3"
@@ -79,7 +79,7 @@ if File.exist?(database_file)
       when /postgresql/
         gem 'pg', '~> 1.5.3'
       when /sqlite3/
-        gem 'sqlite3', '~> 2.5.0'
+        gem 'sqlite3', '~> 2.9.0'
       when /sqlserver/
         gem 'tiny_tds', '~> 2.1.2'
         gem 'activerecord-sqlserver-adapter', '~> 7.2.0'
