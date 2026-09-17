@@ -129,8 +129,14 @@ class ApplicationController < ActionController::Base
     end
     if user.nil? && Setting.rest_api_enabled? && accept_api_auth?
       if (key = api_key_from_request)
-        # Use API key
-        user = User.find_by_api_key(key)
+        # Personal Access Token, falling back to the legacy API key
+        if (pat = PersonalAccessToken.find_by_value(key)) && !pat.expired?
+          user = pat.user
+          pat.touch_last_used!
+          user.oauth_scope = pat.scope_list if pat.scope_list
+        else
+          user = User.find_by_api_key(key)
+        end
       elsif access_token = Doorkeeper.authenticate(request)
         # Oauth
         if access_token.accessible?
