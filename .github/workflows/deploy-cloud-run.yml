@@ -1,0 +1,63 @@
+name: Deploy to Cloud Run
+
+# Manual only - this is a test deployment, not wired to any branch push/merge.
+on:
+  workflow_dispatch: {}
+
+env:
+  PROJECT_ID: ${{ vars.GCP_PROJECT_ID }}
+  REGION: ${{ vars.GCP_REGION }}
+  SERVICE: ${{ vars.CLOUD_RUN_SERVICE }}
+  REPOSITORY: ${{ vars.ARTIFACT_REGISTRY_REPO }}
+  BUCKET: ${{ vars.GCS_DATA_BUCKET }}
+
+permissions:
+  contents: read
+  id-token: write # required to mint the OIDC token for Workload Identity Federation
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ vars.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ vars.GCP_DEPLOYER_SERVICE_ACCOUNT }}
+
+      - name: Set up gcloud
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Configure Docker for Artifact Registry
+        run: gcloud auth configure-docker "${REGION}-docker.pkg.dev" --quiet
+
+      - name: Build image
+        run: |
+          IMAGE="${REGION}-docker.pkg.dev/${PROJECT_ID}/${REPOSITORY}/redmine:${{ github.sha }}"
+          docker build -f docker/prod/Dockerfile -t "$IMAGE" .
+          echo "IMAGE=$IMAGE" >> "$GITHUB_ENV"
+
+      - name: Push image
+        run: docker push "$IMAGE"
+
+      - name: Deploy to Cloud Run
+        run: |
+          gcloud run deploy "$SERVICE" \
+            --image "$IMAGE" \
+            --project "$PROJECT_ID" \
+            --region "$REGION" \
+            --platform managed \
+            --port 8080 \
+            --min-instances 0 \
+            --max-instances 1 \
+            --execution-environment gen2 \
+            --add-volume name=data,type=cloud-storage,bucket="$BUCKET" \
+            --add-volume-mount volume=data,mount-path=/data \
+            --set-env-vars REDMINE_DB_PATH=/data/redmine.sqlite3 \
+            --allow-unauthenticated
+
+      - name: Show service URL
+        run: gcloud run services describe "$SERVICE" --project "$PROJECT_ID" --region "$REGION" --format="value(status.url)"
