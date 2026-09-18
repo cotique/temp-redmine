@@ -57,6 +57,8 @@ yarn-error.log
 /playwright/test-results
 /playwright/playwright-report
 
-# Local dev-server Docker setup - not tracked.
+# Local dev-server Docker setup - not tracked. docker/prod/ is the exception: it's the
+# production deploy image built by CI (see .github/workflows/deploy-cloud-run.yml).
 /docker-compose.yml
-/docker
+/docker/*
+!/docker/prod
