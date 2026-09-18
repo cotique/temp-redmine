@@ -1,0 +1,5 @@
+# Force LF line endings on checkout for shebang scripts, regardless of a
+# contributor's local core.autocrlf. A CRLF shebang (`#!/usr/bin/env ruby\r`)
+# fails to exec on Linux/macOS and inside Docker builds.
+/bin/* text eol=lf
+*.sh text eol=lf
