@@ -97,6 +97,10 @@ Rails.application.routes.draw do
   get 'my/api_key', :to => 'my#show_api_key', :as => 'my_api_key'
   post 'my/api_key', :to => 'my#reset_api_key'
   post 'my/atom_key', :to => 'my#reset_atom_key', :as => 'my_atom_key'
+  get 'my/personal_access_tokens', :to => 'my#personal_access_tokens', :as => 'my_personal_access_tokens'
+  get 'my/personal_access_tokens/new', :to => 'my#new_personal_access_token', :as => 'new_my_personal_access_token'
+  post 'my/personal_access_tokens', :to => 'my#create_personal_access_token'
+  match 'my/personal_access_tokens/:id', :controller => 'my', :action => 'destroy_personal_access_token', :via => :delete, :as => 'destroy_my_personal_access_token'
   match 'my/password', :controller => 'my', :action => 'password', :via => [:get, :post]
   match 'my/add_block', :controller => 'my', :action => 'add_block', :via => :post
   match 'my/remove_block', :controller => 'my', :action => 'remove_block', :via => :post
@@ -366,6 +370,7 @@ Rails.application.routes.draw do
       post 'permissions', :to => 'roles#update_permissions'
     end
   end
+  resources :personal_access_tokens, :only => [:index, :destroy]
   resources :enumerations, :except => :show
   match 'enumerations/:type', :to => 'enumerations#index', :via => :get
 

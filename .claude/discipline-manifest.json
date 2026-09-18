@@ -1,0 +1,30 @@
+{
+  "packVersion": "0.3.7",
+  "source": "C:/claude/projects/claude-discipline-pack",
+  "components": [
+    "commands",
+    "hooks"
+  ],
+  "files": {
+    ".claude/commands/arch-check.md": "91d655238f548f6b027c0321dd5b00ba61ec70f496c6981fa212392cf4b5db93",
+    ".claude/commands/implement.md": "ae93007b48da93db0f5d0721cbf9908cba9b58f9923b2f989d7338dd0fd2f063",
+    ".claude/commands/orchestrate.md": "7a61679671972bae4fb0e0a1b5d2c73e6cc720e4730ebb4409c45d6e56445782",
+    ".claude/commands/orient.md": "cbf3409202c4791d28fef2463096596af6ef999609b010585642bd33e804879a",
+    ".claude/commands/stuck.md": "53798133195b8258039bb767c91ea8a086928e10669c27da3673f3fd618abc08",
+    ".claude/hooks/block-protected-branch.sh": "1e98ef43c6a3fd199f4719342c90c35623ccdf5e3d09cd47fe3ca399d7d82ea1",
+    ".claude/hooks/dod-gate.sh": "e3a9c3d405851fb4f92e8844814260ebff2be5d04880f1351394ed817617204a",
+    ".claude/hooks/format-postcheck.sh": "490a7d728c8a7a9f3aa2d6908a7777ff96c10c4c96f9afc6ff91b893d0dd697a",
+    ".claude/hooks/kb-first-reminder.sh": "7354e16c914aa6be6864ace563b8686d105b8631427e49a229664bbe7d05defb",
+    ".claude/hooks/secret-guard.sh": "80543402274f419b7a021e4d09e2b9ed88ecfbb5a0b2a686865a6f133edb5e64",
+    ".claude/hooks/session-envelope.sh": "5e3ddc2b95eed8cbf3239e8ff1dec3925b569babd4c33dc01df0cef5932e5294",
+    ".claude/hooks/_events.sh": "aa9792ea0c0fbc2791938320df6288a86ca25908c3fce1d642d50f2851a2d30a",
+    ".claude/hooks/block-protected-branch.ps1": "508f5ef00c7bb02a4f3721ceedff8e2eaebeea67fdd8450dd09c80939e38b4f8",
+    ".claude/hooks/dod-gate.ps1": "68b07afcea1a3397baa9b02eb8f2040adc5976d4a09b1a200ce3cc5fbf76986f",
+    ".claude/hooks/format-postcheck.ps1": "1be78c712bfea59b66513662595c451f13127f411d1e64d2d0e4f8200f58568a",
+    ".claude/hooks/kb-first-reminder.ps1": "cd74454f0bc3f596969f8d69f136ac0275c0c45f76b41d9e2ae1a4f016c61260",
+    ".claude/hooks/secret-guard.ps1": "997cb64aefe58e5e6ffa0af7cec0038d317a408927180bef5ee191c3e4b40cef",
+    ".claude/hooks/session-envelope.ps1": "11896223066613423991fb10a8b4706d17914b70bb19aa05a4affe30f4d49b14",
+    ".claude/hooks/_events.ps1": "195fe1f2ab0354f8bd4e2e344786a4c39791f419a58f1e4255be081ede21dd0f",
+    ".githooks/pre-push": "34d7a2db53afe32112c317096f1ad6fd45d3bbee3aafe6a544df3e2ddac279d4"
+  }
+}

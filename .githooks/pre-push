@@ -1,0 +1,125 @@
+#!/bin/sh
+# git pre-push hook — the authoritative half of protected-branch enforcement.
+#
+# Why this exists at all: the PreToolUse hook has to decide from a shell command
+# line, and every defect it ever had was the same defect — no model of shell
+# structure. It was corrected for quoting (a commit message read as a push) and
+# again for separators (a foreign token in a later segment read as a push target),
+# and the next instances were already predictable: $(...), `bash -c "git push ..."`,
+# xargs, backgrounding, multi-line scripts, aliases. Patching instances does not
+# end the class.
+#
+# git ends it. It calls this hook with the REAL refs on stdin, one per line:
+#
+#   <local-ref> <local-sha> <remote-ref> <remote-sha>
+#
+# No parsing, no quoting, no separators, and tags arrive as refs/tags/* for free.
+# A deleted ref arrives with an all-zero local sha. Nothing about a command's text
+# can mislead this hook, because it never sees the text.
+#
+# argv:  $1 = remote name, $2 = remote url
+# stdin: one line per ref being pushed
+# exit 0: allow    exit non-zero: git aborts the push
+#
+# config: .claude/discipline.json — protectedBranches, blockAllPush, mode, events
+# deps:   git. jq only for reading config; without it the built-in defaults apply.
+
+set -u
+
+# Resolve the repo root ourselves: git invokes this hook from the top level, but
+# CLAUDE_PROJECT_DIR is not set here — this runs under git, not under the harness.
+proj=$(git rev-parse --show-toplevel 2>/dev/null || printf '.')
+CLAUDE_PROJECT_DIR="$proj"
+export CLAUDE_PROJECT_DIR
+
+events_lib="$proj/.claude/hooks/_events.sh"
+[ -f "$events_lib" ] && . "$events_lib"
+command -v disc_mode >/dev/null 2>&1 || disc_mode() { printf 'enforce'; }
+command -v disc_log  >/dev/null 2>&1 || disc_log() { :; }
+
+config="$proj/.claude/discipline.json"
+branches=""
+block_all_push=""
+if [ -f "$config" ] && command -v jq >/dev/null 2>&1; then
+  branches=$(jq -r '.protectedBranches[]?' "$config" 2>/dev/null | tr -d '\r')
+  block_all_push=$(jq -r 'if .blockAllPush then "1" else "" end' "$config" 2>/dev/null | tr -d '\r')
+fi
+[ -z "$branches" ] && branches='main
+master
+develop
+release/*'
+
+# Split on newlines with IFS rather than piping into a `while`. The pipeline version
+# put the loop in a subshell, so a match exited the subshell with 0, the `&&` after
+# `done` fired, and the function returned "not protected" — the exact inverse of the
+# truth. It looked correct and allowed a push to main; the canary run caught it.
+is_protected() {  # $1 = branch name
+  b="$1"; oldifs=$IFS; IFS='
+'
+  for pat in $branches; do
+    # shellcheck disable=SC2254
+    case "$b" in $pat) IFS=$oldifs; return 0 ;; esac
+  done
+  IFS=$oldifs
+  return 1
+}
+
+refuse() {  # $1 = reason
+  if [ "$(disc_mode)" = "shadow" ]; then
+    disc_log pre-push would-block fail "$1"
+    echo "[pre-push] SHADOW (not enforced): $1" >&2
+    return 0
+  fi
+  disc_log pre-push block fail "$1"
+  echo "[pre-push] REFUSED: $1" >&2
+  echo "This is git refusing the push, not a text heuristic — the ref above is what" >&2
+  echo "would actually have been written. Push a feature branch, or ask the owner." >&2
+  exit 1
+}
+
+zero='0000000000000000000000000000000000000000'
+pushed_anything=0
+
+while read -r local_ref local_sha remote_ref remote_sha; do
+  [ -z "${remote_ref:-}" ] && continue
+  pushed_anything=1
+
+  # blockAllPush: any push is a human decision. Undoing one on a shared branch
+  # costs a force-push and other people's time — the asymmetry, not the branch
+  # name, is why this option exists.
+  if [ -n "$block_all_push" ]; then
+    refuse "blockAllPush is set — pushing is a human action; ask the owner to push ($remote_ref)"
+    continue
+  fi
+
+  case "$remote_ref" in
+    refs/tags/*)
+      # A tag is a release, and a published release is harder to take back than a
+      # branch commit. Treated as protected unless the config says otherwise.
+      tag=${remote_ref#refs/tags/}
+      refuse "pushing tag '$tag' — a tag is a release; create it deliberately"
+      continue
+      ;;
+    refs/heads/*)
+      branch=${remote_ref#refs/heads/}
+      ;;
+    *)
+      branch=$remote_ref
+      ;;
+  esac
+
+  if is_protected "$branch"; then
+    if [ "$local_sha" = "$zero" ]; then
+      refuse "this would DELETE protected branch '$branch' on $1"
+    else
+      refuse "protected branch '$branch' on $1 (ref $remote_ref)"
+    fi
+    continue
+  fi
+
+  disc_log pre-push allow pass "$remote_ref"
+done
+
+# git feeds nothing on stdin when there is nothing to push; that is not a refusal.
+[ "$pushed_anything" -eq 0 ] && exit 0
+exit 0

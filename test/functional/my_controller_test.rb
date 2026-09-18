@@ -832,4 +832,57 @@ class MyControllerTest < Redmine::ControllerTest
     assert_match /reset/, flash[:notice]
     assert_redirected_to '/my/account'
   end
+
+  def test_create_personal_access_token_with_no_scopes_should_fail_with_a_validation_error
+    Redmine::SudoMode.stubs(:possible?).returns(false)
+    with_settings :personal_access_token_allowed_scopes => %w(view_issues) do
+      assert_no_difference 'PersonalAccessToken.count' do
+        post(
+          :create_personal_access_token,
+          :params => {
+            :personal_access_token => {
+              :name => 'no scopes', :expires_on => 30.days.from_now.to_date.iso8601
+            }
+          })
+      end
+      assert_response :success
+      assert_select '#errorExplanation', :text => /Scopes cannot be blank/
+    end
+  end
+
+  def test_create_personal_access_token_with_only_disallowed_scopes_should_fail_the_same_way
+    Redmine::SudoMode.stubs(:possible?).returns(false)
+    with_settings :personal_access_token_allowed_scopes => %w(view_issues) do
+      assert_no_difference 'PersonalAccessToken.count' do
+        post(
+          :create_personal_access_token,
+          :params => {
+            :personal_access_token => {
+              :name => 'disallowed scope', :expires_on => 30.days.from_now.to_date.iso8601,
+              :scopes => ['log_time']
+            }
+          })
+      end
+      assert_response :success
+      assert_select '#errorExplanation', :text => /Scopes cannot be blank/
+    end
+  end
+
+  def test_create_personal_access_token_with_mixed_scopes_should_keep_only_the_allowed_ones
+    Redmine::SudoMode.stubs(:possible?).returns(false)
+    with_settings :personal_access_token_allowed_scopes => %w(view_issues) do
+      assert_difference 'PersonalAccessToken.count' do
+        post(
+          :create_personal_access_token,
+          :params => {
+            :personal_access_token => {
+              :name => 'mixed scopes', :expires_on => 30.days.from_now.to_date.iso8601,
+              :scopes => ['view_issues', 'log_time']
+            }
+          })
+      end
+      pat = PersonalAccessToken.order(:id => :desc).first
+      assert_equal [:view_issues], pat.scope_list
+    end
+  end
 end

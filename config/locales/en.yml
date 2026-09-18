@@ -139,6 +139,7 @@ en:
         must_contain_special_chars: "must contain special characters (!, $, %, ...)"
         domain_not_allowed: "contains a domain not allowed (%{domain})"
         too_simple: "is too simple"
+        cannot_be_in_the_past: "cannot be in the past"
     attributes:
       doorkeeper/application:
         scopes: Scopes
@@ -179,6 +180,8 @@ en:
   notice_email_error: "An error occurred while sending mail (%{value})"
   notice_feeds_access_key_reseted: Your Atom access key was reset.
   notice_api_access_key_reseted: Your API access key was reset.
+  notice_personal_access_token_created: Personal access token created.
+  notice_personal_access_token_deleted: Personal access token deleted.
   notice_failed_to_save_issues: "Failed to save %{count} issue(s) on %{total} selected: %{ids}."
   notice_failed_to_save_time_entries: "Failed to save %{count} time entrie(s) on %{total} selected: %{ids}."
   notice_failed_to_save_members: "Failed to save member(s): %{errors}."
@@ -338,6 +341,10 @@ en:
   field_new_password: New password
   field_password_confirmation: Confirmation
   field_twofa_scheme: Two-factor authentication scheme
+  field_personal_access_token: "Personal access token"
+  field_expires_on: Expires on
+  field_last_used_on: Last used
+  field_scopes: Scopes
   field_version: Version
   field_type: Type
   field_host: Host
@@ -502,6 +509,8 @@ en:
   setting_unsubscribe: Allow users to delete their own account
   setting_session_lifetime: Session maximum lifetime
   setting_session_timeout: Session inactivity timeout
+  setting_personal_access_token_max_lifetime: "Maximum personal access token lifetime (days)"
+  setting_personal_access_token_allowed_scopes: "Permissions allowed as personal access token scopes"
   setting_thumbnails_enabled: Display attachment thumbnails
   setting_thumbnails_size: Thumbnails size (in pixels)
   setting_non_working_week_days: Non-working days
@@ -1030,6 +1039,10 @@ en:
   label_api_access_key: API access key
   label_missing_api_access_key: Missing an API access key
   label_api_access_key_created_on: "API access key created %{value} ago"
+  label_personal_access_token_plural: Personal access tokens
+  label_personal_access_token_new: New personal access token
+  label_personal_access_token_full_access: Full access
+  label_personal_access_token_never_used: Never
   label_profile: Profile
   label_subtask: Subtask
   label_subtask_plural: Subtasks
@@ -1215,6 +1228,7 @@ en:
   button_archive: Archive
   button_unarchive: Unarchive
   button_reset: Reset
+  button_revoke: Revoke
   button_rename: Rename
   button_change_password: Change password
   button_copy: Copy
@@ -1277,6 +1291,9 @@ en:
   text_users_bulk_destroy_confirm: 'To confirm, please enter "%{yes}" below.'
   text_workflow_edit: Select a role and a tracker to edit the workflow
   text_are_you_sure: Are you sure?
+  text_personal_access_token_value_warning: "Make sure to copy your personal access token now. You won't be able to see it again!"
+  text_personal_access_token_allowed_scopes_info: "No permissions are allowed as personal access token scopes until at least one is checked here. Until then, users cannot create new personal access tokens."
+  text_personal_access_token_no_allowed_scopes_configured: "No permissions have been enabled for personal access tokens yet. Ask an administrator to enable at least one under Administration → Settings → API."
   text_journal_changed: "%{label} changed from %{old} to %{new}"
   text_journal_changed_no_detail: "%{label} updated"
   text_journal_set_to: "%{label} set to %{value}"

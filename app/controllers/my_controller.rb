@@ -26,7 +26,9 @@ class MyController < ApplicationController
   accept_api_auth :account
 
   require_sudo_mode :account, only: :put
-  require_sudo_mode :reset_atom_key, :reset_api_key, :show_api_key, :destroy
+  require_sudo_mode :reset_atom_key, :reset_api_key, :show_api_key, :destroy,
+                     :personal_access_tokens, :new_personal_access_token,
+                     :create_personal_access_token, :destroy_personal_access_token
 
   helper :issues
   helper :users
@@ -146,6 +148,60 @@ class MyController < ApplicationController
       flash[:notice] = l(:notice_api_access_key_reseted)
     end
     redirect_to my_account_path
+  end
+
+  # List user's personal access tokens
+  def personal_access_tokens
+    scope = User.current.personal_access_tokens.order(:created_on => :desc)
+    @personal_access_token_count = scope.count
+    @personal_access_token_pages = Paginator.new @personal_access_token_count, per_page_option, params['page']
+    @personal_access_tokens = scope.limit(@personal_access_token_pages.per_page).offset(@personal_access_token_pages.offset).to_a
+  end
+
+  # Form to create a new personal access token
+  def new_personal_access_token
+    @personal_access_token = PersonalAccessToken.new
+    @permissions = PersonalAccessToken.allowed_permissions
+  end
+
+  # Create a new personal access token
+  def create_personal_access_token
+    attrs = params.require(:personal_access_token).permit(:name, :expires_on, :scopes => [])
+    @personal_access_token = PersonalAccessToken.new
+    @personal_access_token.user = User.current
+    @personal_access_token.name = attrs[:name]
+    @personal_access_token.expires_on = attrs[:expires_on]
+
+    allowed_names = PersonalAccessToken.allowed_permission_names.map(&:to_s)
+    submitted = Array(attrs[:scopes]).reject(&:blank?)
+    @personal_access_token.scopes = (submitted & allowed_names).join(' ')
+
+    max_lifetime = Setting.personal_access_token_max_lifetime.to_i
+    if max_lifetime > 0
+      max_expires_on = max_lifetime.days.from_now.to_date
+      if @personal_access_token.expires_on.present? && @personal_access_token.expires_on > max_expires_on
+        @personal_access_token.expires_on = max_expires_on
+      end
+    end
+
+    if @personal_access_token.save
+      flash[:notice] = l(:notice_personal_access_token_created)
+      flash[:personal_access_token_value] = @personal_access_token.value
+      redirect_to my_personal_access_tokens_path
+    else
+      @permissions = PersonalAccessToken.allowed_permissions
+      render :action => 'new_personal_access_token'
+    end
+  end
+
+  # Revoke one of the user's personal access tokens
+  def destroy_personal_access_token
+    @personal_access_token = User.current.personal_access_tokens.find(params[:id])
+    @personal_access_token.destroy
+    flash[:notice] = l(:notice_personal_access_token_deleted)
+    redirect_to my_personal_access_tokens_path
+  rescue ActiveRecord::RecordNotFound
+    render_404
   end
 
   def update_page

@@ -73,6 +73,19 @@ session_timeout:
   format: int
   default: 0
   security_notifications: 1
+# Maximum lifetime of personal access tokens in days
+# 0 means no limit
+personal_access_token_max_lifetime:
+  format: int
+  default: 0
+# Permission names allowed as Personal Access Token scopes.
+# Empty (the default) means NONE are allowed - an admin must explicitly
+# check at least one permission below before any new Personal Access
+# Token can be created (Personal Access Tokens now require >= 1 scope).
+personal_access_token_allowed_scopes:
+  serialized: true
+  default: []
+  security_notifications: 1
 attachment_max_size:
   format: int
   default: 5120

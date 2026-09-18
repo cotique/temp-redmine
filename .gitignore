@@ -46,3 +46,19 @@
 
 /node_modules
 yarn-error.log
+
+# discipline-pack: records local paths and command text, never commit it.
+.claude/discipline-events.jsonl
+.claude/settings.local.json
+.claude/discipline.json
+
+# Playwright UI verification harness (playwright/) - generated artifacts only.
+/playwright/node_modules
+/playwright/test-results
+/playwright/playwright-report
+
+# Local dev-server Docker setup - not tracked. docker/prod/ is the exception: it's the
+# production deploy image built by CI (see .github/workflows/deploy-cloud-run.yml).
+/docker-compose.yml
+/docker/*
+!/docker/prod

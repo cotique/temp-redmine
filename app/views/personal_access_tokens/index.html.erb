@@ -1,0 +1,43 @@
+<h2><%= l(:label_personal_access_token_plural) %></h2>
+
+<% if @personal_access_tokens.any? %>
+<div class="autoscroll">
+<table class="list personal-access-tokens">
+  <thead><tr>
+  <th><%= l(:field_user) %></th>
+  <th><%= l(:field_name) %></th>
+  <th><%= l(:field_scopes) %></th>
+  <th><%= l(:field_expires_on) %></th>
+  <th><%= l(:field_last_used_on) %></th>
+  <th></th>
+  </tr></thead>
+  <tbody>
+<% @personal_access_tokens.each do |token| %>
+  <tr id="personal-access-token-<%= token.id %>">
+    <td class="user"><%= link_to token.user.login, edit_user_path(token.user) %></td>
+    <td class="name"><%= token.name %></td>
+    <td class="scopes">
+      <% if token.scope_list.present? %>
+        <%= token.scope_list.map {|s| l_or_humanize(s, :prefix => 'permission_')}.join(', ') %>
+      <% else %>
+        <%= l(:label_personal_access_token_full_access) %>
+      <% end %>
+    </td>
+    <td class="expires_on"><%= format_date(token.expires_on) %></td>
+    <td class="last_used_on">
+      <%= token.last_used_on ? format_time(token.last_used_on) : l(:label_personal_access_token_never_used) %>
+    </td>
+    <td class="buttons">
+      <%= delete_link personal_access_token_path(token) %>
+    </td>
+  </tr>
+<% end %>
+  </tbody>
+</table>
+</div>
+<span class="pagination"><%= pagination_links_full @personal_access_token_pages, @personal_access_token_count %></span>
+<% else %>
+<p class="nodata"><%= l(:label_no_data) %></p>
+<% end %>
+
+<% html_title(l(:label_personal_access_token_plural)) -%>

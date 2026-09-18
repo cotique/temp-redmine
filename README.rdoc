@@ -1,5 +1,167 @@
 = Redmine
 
-Redmine is a flexible project management web application written using Ruby on Rails framework.
+Redmine is a project management web application built with Ruby on Rails.
 
-More details can be found in the doc directory or on the official website https://www.redmine.org
+More information is available in the +doc/+ directory and at
+https://www.redmine.org.
+
+== Personal Access Tokens (#43881)
+
+Plans 1-5 define one combined PAT feature. PATs add API authentication without
+changing existing sessions, legacy API keys, or Doorkeeper OAuth2.
+
+=== How it works
+
+A PAT can be sent using:
+
+* <tt>?key=<token></tt>
+* <tt>X-Redmine-API-Key: <token></tt>
+* HTTP Basic authentication, with the PAT as the username
+
+The raw token is shown once after creation. Only its SHA256 digest is stored.
+
+Authentication checks the PAT first. If it is not usable, Redmine falls back to
+the existing legacy API-key lookup.
+
+A PAT is rejected when:
+
+* it is expired;
+* its database row was deleted;
+* all of its scopes are disabled by the administrator.
+
+A rejected PAT normally results in <tt>401 Unauthorized</tt>.
+
+=== Scopes
+
+Scopes are stored as one space-separated string:
+
+<pre>
+view_issues edit_issues log_time
+</pre>
+
+At authentication time:
+
+<pre>
+effective scopes = PAT scopes intersected with the administrator allow-list
+</pre>
+
+The effective scopes are passed through the same authorization path used by
+Doorkeeper OAuth2:
+
+<pre>
+PAT scopes -> User#oauth_scope -> Role#allowed_to?
+</pre>
+
+A PAT never grants permissions that the user does not already have through
+their roles and project memberships.
+
+If only some PAT scopes are disabled, the token continues with the remaining
+effective scopes. If none remain, the PAT is rejected with <tt>401</tt>.
+
+The administrator controls the global PAT scope allow-list under:
+
+<pre>
+Administration -> Settings -> API
+</pre>
+
+The allow-list is empty by default, so an administrator must enable at least
+one permission before users can create PATs.
+
+=== Included
+
+The PAT feature includes:
+
+* PAT model, migration, hashing, expiration and revocation;
+* query parameter, request header and HTTP Basic authentication;
+* OAuth-compatible permission checks;
+* user token creation, listing and revocation;
+* administrator token listing and revocation;
+* administrator control over available PAT scopes;
+* pagination for token lists;
+* filtering of <tt>key</tt> values from request logs;
+* Minitest and Playwright verification.
+
+The maximum PAT lifetime is enforced when a token is created. Changing the
+setting does not change existing token expiration dates.
+
+=== Deferred work and limits
+
+The following are outside the current feature:
+
+* project-specific token restrictions;
+* structured, queryable API audit logs;
+* alerts and notifications;
+* automatic cleanup of expired or disabled tokens;
+* a normalized scope table. Scopes remain a space-separated string;
+* caching or throttling of last-used updates;
+* maximum lifetime setting UI management.
+
+=== Assumptions
+
+* Plans 1-5 are delivered together.
+* New PATs require at least one administrator-approved scope.
+* Existing legacy API keys and Doorkeeper OAuth2 continue to work unchanged.
+* Deleting the PAT row is the revocation mechanism.
+* Administrator scope changes take effect on the next authenticated request.
+* A disabled scope never grants access by itself. The user's roles and project
+  memberships remain the final permission boundary.
+
+=== Run locally
+
+Start the development environment from the repository root:
+
+<pre>
+docker compose up -d
+</pre>
+
+Open:
+
+<pre>
+http://localhost:3000
+</pre>
+
+=== Verify
+
+Run the focused Rails tests:
+
+<pre>
+docker compose exec -T redmine bundle exec ruby -Itest \
+  test/integration/api_test/authentication_test.rb
+
+docker compose exec -T redmine bundle exec ruby -Itest \
+  test/unit/personal_access_token_test.rb
+
+docker compose exec -T redmine bundle exec ruby -Itest \
+  test/functional/my_controller_test.rb
+</pre>
+
+Run RuboCop:
+
+<pre>
+docker compose exec -T redmine bundle exec rubocop \
+  app/models/personal_access_token.rb \
+  app/controllers/application_controller.rb \
+  app/controllers/my_controller.rb
+</pre>
+
+Run the Playwright suite:
+
+<pre>
+cd playwright
+npm install
+npx playwright install chromium
+npx playwright test
+</pre>
+
+The Playwright global setup resets the development admin password through
+<tt>rails runner</tt> before tests start. It does not change the password
+through the browser.
+
+Detailed design notes are in:
+
+* <tt>plans/43881-personal-access-tokens.md</tt>
+* <tt>plans/43881-01-data-model-and-setting.md</tt>
+* <tt>plans/43881-02-authentication-and-authorization.md</tt>
+* <tt>plans/43881-03-self-service-ui.md</tt>
+* <tt>plans/43881-04-admin-panel.md</tt>
+* <tt>plans/43881-05-scopes-management.md</tt>

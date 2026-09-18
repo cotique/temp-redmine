@@ -254,6 +254,10 @@ module Redmine
                   :caption => :label_role_and_permissions,
                   :icon => 'roles',
                   :html => {:class => 'icon icon-roles'}
+        menu.push :personal_access_tokens, {:controller => 'personal_access_tokens'},
+                  :caption => :label_personal_access_token_plural,
+                  :icon => 'key',
+                  :html => {:class => 'icon icon-key'}
         menu.push :trackers, {:controller => 'trackers'},
                   :caption => :label_tracker_plural,
                   :icon => 'issue',

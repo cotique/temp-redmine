@@ -2,18 +2,18 @@ source 'https://rubygems.org'
 
 ruby '>= 3.2.0', '< 3.5.0'
 
-gem 'rails', '7.2.3'
+gem 'rails', '7.2.3.2'
 gem 'rouge', '~> 4.5'
 gem 'mini_mime', '~> 1.1.0'
 gem "actionpack-xml_parser"
 gem 'roadie-rails', '~> 3.3.0'
 gem 'marcel'
-gem 'mail', '~> 2.8.1'
+gem 'mail', '~> 2.9.0'
 gem 'nokogiri', '~> 1.19.1'
 gem 'i18n', '~> 1.14.1'
 gem 'rbpdf', '~> 1.21.4'
 gem 'addressable'
-gem 'rubyzip', '~> 2.4.0'
+gem 'rubyzip', '~> 3.4.0'
 gem 'propshaft', '~> 1.1.0'
 gem 'rack', '>= 3.1.3'
 gem "stimulus-rails", "~> 1.3"
@@ -23,6 +23,7 @@ gem "doorkeeper", "~> 5.8.2"
 gem "bcrypt", require: false
 gem "doorkeeper-i18n", "~> 5.2"
 gem "requestjs-rails", "~> 0.0.13"
+gem 'puma'
 
 #  Ruby Standard Gems
 gem 'csv', '~> 3.3.2'
@@ -79,7 +80,7 @@ if File.exist?(database_file)
       when /postgresql/
         gem 'pg', '~> 1.5.3'
       when /sqlite3/
-        gem 'sqlite3', '~> 2.5.0'
+        gem 'sqlite3', '~> 2.9.0'
       when /sqlserver/
         gem 'tiny_tds', '~> 2.1.2'
         gem 'activerecord-sqlserver-adapter', '~> 7.2.0'
@@ -111,7 +112,6 @@ group :test do
   gem 'simplecov', '~> 0.22.0', :require => false
   gem "ffi", platforms: [:mingw, :x64_mingw, :mswin]
   # For running system tests
-  gem 'puma'
   gem "capybara", ">= 3.39"
   gem 'selenium-webdriver', '>= 4.11.0'
   # RuboCop

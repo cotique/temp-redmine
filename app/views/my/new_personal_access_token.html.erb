@@ -1,0 +1,31 @@
+<h2><%= l(:label_personal_access_token_new) %></h2>
+
+<%= error_messages_for 'personal_access_token' %>
+
+<%= labelled_form_for :personal_access_token, @personal_access_token,
+                     :url => my_personal_access_tokens_path,
+                     :html => {:id => 'personal_access_token_form'} do |f| %>
+<div class="box tabular">
+  <p><%= f.text_field :name, :required => true %></p>
+  <p><%= f.date_field :expires_on, :size => 10, :required => true, :min => Date.today.iso8601 %><%= calendar_for('personal_access_token_expires_on') %></p>
+</div>
+
+<h3><%= l(:field_scopes) %></h3>
+<div class="box tabular" id="personal_access_token_scopes">
+<% if @permissions.empty? %>
+<p class="nodata"><%= l(:text_personal_access_token_no_allowed_scopes_configured) %></p>
+<% else %>
+<%= render :partial => 'common/permission_checkboxes',
+           :locals => {
+             :permissions => @permissions,
+             :field_name => 'personal_access_token[scopes]',
+             :checked => lambda {|name| (@personal_access_token.scope_list || []).include?(name)}
+           } %>
+<p class="text-muted"><%= l(:label_personal_access_token_full_access) %></p>
+<% end %>
+</div>
+
+<p><%= f.submit l(:button_create) %></p>
+<% end %>
+
+<% html_title(l(:label_personal_access_token_new)) -%>
